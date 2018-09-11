@@ -1,0 +1,9 @@
+name: 'Commerce PartPay'
+description: 'Integrates the PartPay gateway with Drupal Commerce payment module.'
+core: 8.x
+package: 'Commerce (contrib)'
+dependencies:
+  - commerce
+  - commerce_payment
+  - commerce_order
+type: module
