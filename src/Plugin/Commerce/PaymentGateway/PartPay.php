@@ -30,14 +30,9 @@ class PartPay extends CommercePartPay {
   /**
    * PartPay Service.
    *
-   * @var \Drupal\commerce_partpay\PartPay\PartPayServiceInterface
+   * @var \Drupal\commerce_partpay\PartPay\PartPay
    */
-  protected $partPayService;
-
-  /**
-   * PartPay gateway.
-   */
-  protected $gateway;
+  protected $partPay;
 
   /**
    * Constructs a new PaymentGatewayBase object.
@@ -76,13 +71,11 @@ class PartPay extends CommercePartPay {
       $time
     );
 
-    $this->partPayService = \Drupal::service('commerce_partpay.partpay_service');
+    $this->partPay = \Drupal::service('commerce_partpay.partpay');
 
-    $this->gateway = $this->partPayService->getGateway();
+    $this->partPay->setSettings($configuration);
 
-    $this->partPayService->setConfiguration($configuration);
-
-    $this->partPayService->setCredentials();
+//    $this->partPay->setCredentials();
 
   }
 
@@ -130,6 +123,32 @@ class PartPay extends CommercePartPay {
     return $form;
   }
 
+  public function validateConfigurationForm(array &$form, FormStateInterface $form_state) {
+    parent::validateConfigurationForm($form, $form_state);
+
+    if(!$form_state->getValue('status')) {
+      return TRUE;
+    }
+
+    $values = $form_state->getValue($form['#parents']);
+
+    if ($this->partPay->isTestMode()) {
+      $this->partPay->setTestMode();
+    }
+
+    $this->partPay->setClientId($values['partpayClientId']);
+    $this->partPay->setSecret($values['partpaySecret']);
+
+    $response = $this->partPay->createToken();
+
+    if (!is_object($response) || !property_exists($response, 'access_token') || !property_exists($response, 'expires_in')) {
+      $form_state->setErrorByName('error', $response->getReasonPhrase());
+    }
+
+    $form_state->setValue('accessToken', $response->access_token);
+    $form_state->setValue('accessTokenExpiresIn', $response->expires_in);
+  }
+
   /**
    * {@inheritdoc}
    */
@@ -145,6 +164,7 @@ class PartPay extends CommercePartPay {
         }
       }
 
+      $this->partPay->saveToken($form_state->getValue('accessToken'), $form_state->getValue('accessTokenExpiresIn'));
     }
   }
 

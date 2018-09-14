@@ -2,8 +2,7 @@
 
 namespace Drupal\commerce_partpay\PluginForm\OffSiteRedirect;
 
-use Drupal\commerce_partpay\PartPay\PartPayServiceInterface;
-use Drupal\commerce_payment\Exception\PaymentGatewayException;
+use Drupal\commerce_partpay\PartPay\PartPay;
 use Drupal\commerce_payment\PluginForm\PaymentOffsiteForm;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Form\FormStateInterface;
@@ -19,19 +18,13 @@ class PartPayForm extends PaymentOffsiteForm implements ContainerInjectionInterf
   /**
    * The PartPay Service.
    */
-  protected $partPayService;
-
-  /**
-   * Partpay gateway.
-   */
-  protected $gateway;
+  protected $partPay;
 
   /**
    * PartPayOffSiteForm constructor.
    */
-  public function __construct(PartPayServiceInterface $partPayService) {
-    $this->partPayService = $partPayService;
-    $this->gateway = $partPayService->getGateway();
+  public function __construct(PartPay $partPay) {
+    $this->partPay = $partPay;
   }
 
   /**
@@ -44,22 +37,25 @@ class PartPayForm extends PaymentOffsiteForm implements ContainerInjectionInterf
     /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
     $payment = $this->entity;
 
-    $this->partPayService->preparePartPayTransaction($form, $payment);
+    $this->partPay->init();
 
-    if ($this->partPayService->getConfiguration('mode') === 'test') {
-      $this->gateway->setTestMode(TRUE);
+    $transaction = $this->partPay->prepareTransaction($payment, $form);
+
+    $conf = $this->partPay->getConfiguration();
+
+    $response = $this->partPay->createOrder($transaction);
+
+    if ($response->getStatusCode() !== 200) {
+      $this->partPay->logger->error('Error');
     }
-
-    /** @var \Omnipay\PaymentExpress\Message\PxPayAuthorizeResponse $request */
-    $request = $this->gateway->purchase()->send();
-
-    if (empty($request->getRedirectUrl())) {
-      $this->partPayService->logger->error($request->getData()->ResponseText);
-    }
-
-    if (!$this->partPayService->isValidateCurrency($payment->getAmount()->getCurrencyCode())) {
-      throw new PaymentGatewayException('Invalid currency. (' . $payment->getAmount()->getCurrencyCode() . ')');
-    }
+//
+//    $form = $this->buildRedirectForm(
+//      $form,
+//      $form_state,
+//      $request->getRedirectUrl(),
+//      [],
+//      $request->getRedirectMethod());
+//    }
 
     return $form;
 
@@ -70,7 +66,7 @@ class PartPayForm extends PaymentOffsiteForm implements ContainerInjectionInterf
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('commerce_partpay.partpay_service')
+      $container->get('commerce_partpay.partpay')
     );
   }
 

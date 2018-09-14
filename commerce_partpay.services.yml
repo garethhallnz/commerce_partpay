@@ -4,10 +4,6 @@ services:
     factory: logger.factory:get
     arguments: ['commerce_partpay']
 
-  commerce_partpay.partpay_service:
-    class: Drupal\commerce_partpay\PartPay\PartPayService
-    arguments: ['@commerce_partpay.logger', '@module_handler']
-
   commerce_partpay.partpay:
       class: Drupal\commerce_partpay\PartPay\PartPay
-      arguments: ['@commerce_partpay.logger', '@module_handler']
+      arguments: ['@commerce_partpay.logger', '@module_handler', "@http_client"]
