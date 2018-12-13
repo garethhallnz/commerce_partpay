@@ -16,7 +16,9 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 class PartPayForm extends PaymentOffsiteForm implements ContainerInjectionInterface {
 
   /**
-   * The PartPay Service.
+   * PartPay Service.
+   *
+   * @var \Drupal\commerce_partpay\PartPay\PartPay
    */
   protected $partPay;
 
@@ -41,24 +43,23 @@ class PartPayForm extends PaymentOffsiteForm implements ContainerInjectionInterf
 
     $transaction = $this->partPay->prepareTransaction($payment, $form);
 
-    $conf = $this->partPay->getConfiguration();
-
     $response = $this->partPay->createOrder($transaction);
 
-    if ($response->getStatusCode() !== 200) {
+    if (!$this->partPay->isRedirectMethod($response)) {
       $this->partPay->logger->error('Error');
+      return $form;
     }
-//
-//    $form = $this->buildRedirectForm(
-//      $form,
-//      $form_state,
-//      $request->getRedirectUrl(),
-//      [],
-//      $request->getRedirectMethod());
-//    }
+
+    /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
+    $order = $payment->getOrder();
+
+    $order->setData('partPay', $response);
+
+    $order->save();
+
+    $form = $this->buildRedirectForm($form, $form_state, $this->partPay->getRedirectUrl($response), []);
 
     return $form;
-
   }
 
   /**

@@ -58,6 +58,11 @@ interface AbstractPartPayInterface {
   public function setToken($token);
 
   /**
+   * Delete auth tokens.
+   */
+  public function deleteTokens();
+
+  /**
    * Set Test Mode.
    */
   public function setTestMode();
@@ -103,8 +108,37 @@ interface AbstractPartPayInterface {
   public function getModuleHandler();
 
   /**
+   * Is it in redirection mode?
+   */
+  public function isRedirectMethod();
+
+  /**
+   * Get redirection url.
+   */
+  public function getRedirectUrl();
+
+  /**
    * Http request.
+   *
+   * @param string $method
+   *   Http request type ie. get, post.
+   * @param string $resource
+   *   The resource we are accessing.
+   * @param array $options
+   *   Addition request options.
    */
   public function request($method, $resource, array $options);
+
+  /**
+   * Http request.
+   *
+   * @param string $method
+   *   Http request type ie. get, post.
+   * @param string $resource
+   *   The resource we are accessing.
+   * @param array $options
+   *   Addition request options.
+   */
+  public function handleRequest($method, $resource, array $options);
 
 }

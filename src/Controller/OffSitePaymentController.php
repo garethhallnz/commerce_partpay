@@ -4,7 +4,6 @@ namespace Drupal\commerce_partpay\Controller;
 
 use Drupal\commerce_checkout\CheckoutOrderManager;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
-use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;

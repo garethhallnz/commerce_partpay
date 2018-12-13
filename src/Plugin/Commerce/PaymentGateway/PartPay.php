@@ -74,13 +74,10 @@ class PartPay extends CommercePartPay {
     $this->partPay = \Drupal::service('commerce_partpay.partpay');
 
     $this->partPay->setSettings($configuration);
-
-//    $this->partPay->setCredentials();
-
   }
 
   /**
-   * {@inheritdoc}
+   * Set the default config options.
    */
   public function defaultConfiguration() {
     return array_merge([
@@ -91,7 +88,7 @@ class PartPay extends CommercePartPay {
   }
 
   /**
-   * {@inheritdoc}
+   * Constrict the settings form.
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
     $form = parent::buildConfigurationForm($form, $form_state);
@@ -123,10 +120,13 @@ class PartPay extends CommercePartPay {
     return $form;
   }
 
+  /**
+   * Validation handler.
+   */
   public function validateConfigurationForm(array &$form, FormStateInterface $form_state) {
     parent::validateConfigurationForm($form, $form_state);
 
-    if(!$form_state->getValue('status')) {
+    if (!$form_state->getValue('status')) {
       return TRUE;
     }
 
@@ -142,7 +142,12 @@ class PartPay extends CommercePartPay {
     $response = $this->partPay->createToken();
 
     if (!is_object($response) || !property_exists($response, 'access_token') || !property_exists($response, 'expires_in')) {
-      $form_state->setErrorByName('error', $response->getReasonPhrase());
+      $this->partPay->deleteTokens();
+      $message = t(
+        "Sorry there was a problem communicating with PartPay's servers. The response given was @error",
+        ['@error' => $response->getReasonPhrase()]
+      );
+      $form_state->setErrorByName('error', $message);
     }
 
     $form_state->setValue('accessToken', $response->access_token);
@@ -150,7 +155,7 @@ class PartPay extends CommercePartPay {
   }
 
   /**
-   * {@inheritdoc}
+   * Submit handler.
    */
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
     parent::submitConfigurationForm($form, $form_state);

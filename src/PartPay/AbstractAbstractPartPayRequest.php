@@ -57,71 +57,71 @@ class AbstractAbstractPartPayRequest implements AbstractPartPayInterface {
   protected $tokenRequestMode = FALSE;
 
   /**
-   * Sandbox Endpoint URL
+   * Sandbox Endpoint URL.
    *
-   * @var string URL
+   * @var string
    */
   protected $testEndpoint = 'https://api-ci.partpay.co.nz';
 
   /**
-   * Live Endpoint URL
+   * Live Endpoint URL.
    *
-   * @var string URL
+   * @var string
    */
   protected $liveEndpoint = 'https://api.partpay.co.nz';
 
   /**
-   * Sandbox Endpoint URL
+   * Sandbox Endpoint URL.
    *
-   * @var string URL
+   * @var string
    */
   protected $testTokenEndpoint = 'https://partpay-dev.au.auth0.com';
 
   /**
-   * Live Endpoint URL
+   * Live Endpoint URL.
    *
-   * @var string URL
+   * @var string
    */
   protected $liveTokenEndpoint = 'https://partpay.au.auth0.com';
 
 
   /**
-   * Test Audience URL
+   * Test Audience URL.
    *
-   * @var string URL
+   * @var string
    */
   protected $testAudience = 'https://auth-dev.partpay.co.nz';
 
   /**
-   * Live Audience URL
+   * Live Audience URL.
    *
-   * @var string URL
+   * @var string
    */
   protected $liveAudience = 'https://auth.partpay.co.nz';
 
   /**
-   * Auth ClientId
+   * Auth ClientId.
    *
    * @var string
    */
   protected $clientId;
 
   /**
-   * Auth Secret
+   * Auth Secret.
    *
    * @var string
    */
   protected $secret;
 
   /**
-   * Token
+   * Token.
    *
    * @var string
    */
   protected $token;
 
   /**
-   * Token Expiry
+   * Token Expiry.
    *
    * @var string
    */
@@ -251,6 +251,14 @@ class AbstractAbstractPartPayRequest implements AbstractPartPayInterface {
   /**
    * {@inheritdoc}
    */
+  public function deleteTokens() {
+    $this->token = NULL;
+    $this->tokenExpiry = NULL;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function getReference() {
     return $this->getSettings('partpayRef');
   }
@@ -282,15 +290,33 @@ class AbstractAbstractPartPayRequest implements AbstractPartPayInterface {
   }
 
   /**
-   * Makes a request to the PandaDoc API.
-   *
-   * @param $method
-   * @param $resource
-   * @param array $options
-   * @return mixed
+   * {@inheritdoc}
    */
-  public function request($method, $resource, array $options = [])
-  {
+  public function isRedirectMethod(\stdClass $response) {
+
+    if (empty($response->redirectUrl)) {
+      return FALSE;
+    }
+
+    return TRUE;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getRedirectUrl(\stdClass $response) {
+
+    if (empty($response->redirectUrl)) {
+      return '';
+    }
+
+    return $response->redirectUrl;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function request($method, $resource, array $options = []) {
     $headers = [];
 
     if ($this->hasToken()) {
@@ -311,16 +337,9 @@ class AbstractAbstractPartPayRequest implements AbstractPartPayInterface {
   }
 
   /**
-   * Makes a request to the PandaDoc API using the Guzzle HTTP client.
-   *
-   * @param $method
-   * @param string $resource
-   * @param array $options
-   * @return mixed
-   * @throws RequestException
+   * {@inheritdoc}
    */
-  public function handleRequest($method, $resource, array $options = [])
-  {
+  public function handleRequest($method, $resource, array $options = []) {
 
     $endpoint = $this->getEndpoint();
 
@@ -337,8 +356,10 @@ class AbstractAbstractPartPayRequest implements AbstractPartPayInterface {
 
       return json_decode($data->getContents());
 
-    } catch (RequestException $e) {
+    }
+    catch (RequestException $e) {
       return $e->getResponse();
     }
   }
+
 }

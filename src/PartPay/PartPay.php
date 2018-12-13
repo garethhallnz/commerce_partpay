@@ -2,7 +2,6 @@
 
 namespace Drupal\commerce_partpay\PartPay;
 
-use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use GuzzleHttp\RequestOptions;
 
@@ -13,9 +12,12 @@ use GuzzleHttp\RequestOptions;
  */
 class PartPay extends AbstractAbstractPartPayRequest {
 
+  /**
+   * Initiate the PartPay connection deeds.
+   */
   public function init() {
 
-    if(!$this->hasToken()) {
+    if (!$this->hasToken()) {
       $this->setClientId($this->getSettings('partpayClientId'));
       $this->setSecret($this->getSettings('partpaySecret'));
 
@@ -30,6 +32,9 @@ class PartPay extends AbstractAbstractPartPayRequest {
 
   }
 
+  /**
+   * Create an access token.
+   */
   public function createToken() {
 
     $this->setTokenRequestMode();
@@ -46,11 +51,26 @@ class PartPay extends AbstractAbstractPartPayRequest {
     return $this->request('POST', '/oauth/token', $options);
   }
 
+  /**
+   * Save the access token to state.
+   */
   public function saveToken($token, $expiry) {
     \Drupal::state()->set('partPayToken', $token);
     \Drupal::state()->set('partPayTokenExpiry', time() + $expiry);
   }
 
+  /**
+   * {@inheritdoc}
+   */
+  public function deleteTokens() {
+    parent::deleteTokens();
+    \Drupal::state()->delete('partPayToken');
+    \Drupal::state()->delete('partPayTokenExpiry');
+  }
+
+  /**
+   * Do we have a valid access token?
+   */
   public function hasToken() {
 
     $token = \Drupal::state()->get('partPayToken');
@@ -71,18 +91,68 @@ class PartPay extends AbstractAbstractPartPayRequest {
 
   }
 
+  /**
+   * Get PartPay configuration.
+   */
   public function getConfiguration() {
     return $this->request('GET', '/configuration');
   }
 
+  /**
+   * Prepare the Drupal request for PartPay.
+   */
   public function prepareTransaction(PaymentInterface $payment, $form) {
 
     $order = $payment->getOrder();
 
+    /** @var \Drupal\address\AddressInterface $billingAddress */
+    $billingAddress = $order->getBillingProfile()->get('address')->first();
+
+    /** @var \Drupal\address\AddressInterface $shippingAddress */
+    $shippingAddress = [];
+
+    $data = [
+      'amount' => number_format($payment->getAmount()->getNumber(), 2),
+      'consumer' => [
+        'email' => $order->getEmail(),
+      ],
+      'description' => sprintf('%s #%d', $this->getReference(), $order->id()),
+      'merchant' => [
+        'redirectConfirmUrl' => $form['#return_url'],
+        'redirectCancelUrl' => $form['#cancel_url'],
+      ],
+      'merchantReference' => sprintf('%s #%d', $this->getReference(), $order->id()),
+    ];
+
+    if (!empty($billingAddress)) {
+      $data['billing'] = [
+        'addressLine1' => $billingAddress->getAddressLine1(),
+        'addressLine2' => $billingAddress->getAddressLine2(),
+        'suburb' => $billingAddress->getDependentLocality(),
+        'city' => $billingAddress->getLocality(),
+        'postcode' => $billingAddress->getPostalCode(),
+        'state' => $billingAddress->getAdministrativeArea(),
+      ];
+
+      $data['consumer']['givenNames'] = $billingAddress->getGivenName();
+      $data['consumer']['surname'] = $billingAddress->getFamilyName();
+    }
+
+    if (!empty($shippingAddress)) {
+      $data['shipping'] = [
+        'addressLine1' => $shippingAddress->getAddressLine1(),
+        'addressLine2' => $shippingAddress->getAddressLine2(),
+        'suburb' => $shippingAddress->getDependentLocality(),
+        'city' => $shippingAddress->getLocality(),
+        'postcode' => $shippingAddress->getPostalCode(),
+        'state' => $shippingAddress->getAdministrativeArea(),
+      ];
+    }
+
     /** @var \Drupal\commerce_order\Entity\OrderInterface $orderItems */
     $orderItems = $order->getItems();
 
-    $items = [];
+    $lineItems = [];
 
     /** @var \Drupal\commerce_order\Entity\OrderItemInterface $item */
     foreach ($orderItems as $item) {
@@ -90,7 +160,7 @@ class PartPay extends AbstractAbstractPartPayRequest {
       /** @var \Drupal\commerce_product\Entity\ProductVariationInterface $purchasableEntity */
       $purchasableEntity = $item->getPurchasedEntity();
 
-      $items[] = [
+      $lineItems[] = [
         "description" => sprintf("%s: %s", ucwords($purchasableEntity->bundle()), $item->getTitle()),
         "name" => $item->getTitle(),
         "sku" => $purchasableEntity->getSku(),
@@ -99,50 +169,16 @@ class PartPay extends AbstractAbstractPartPayRequest {
       ];
     }
 
-
-    $billingProfile = $order->getBillingProfile();
-
-    /** @var \Drupal\address\AddressInterface $billingAddress */
-    $billingAddress = $billingProfile->get('address')->first();
-
-
-    $data = [
-      'amount' => number_format($payment->getAmount()->getNumber(), 2),
-      'consumer' => [
-        'givenNames' => $billingAddress->getGivenName(),
-        'surname' => $billingAddress->getFamilyName(),
-        'email' => $order->getEmail(),
-      ],
-      'billing' => [
-        'addressLine1' => $billingAddress->getAddressLine1(),
-        'addressLine2' => $billingAddress->getAddressLine2(),
-        'suburb' => $billingAddress->getDependentLocality(),
-        'city' => $billingAddress->getLocality(),
-        'postcode' => $billingAddress->getPostalCode(),
-        'state' => $billingAddress->getAdministrativeArea(),
-      ],
-//      'shipping' => [
-//        'addressLine1' => '23 Duncan Tce',
-//        'addressLine2' => ',
-//        'suburb' => 'Kilbirnie',
-//        'city' => 'Wellilngton',
-//        'postcode' => '1000',
-//        'state' => '
-//      ],
-      'description' => sprintf('%s #%d', $this->getReference(), $order->id()),
-      'items' => $items,
-      'merchant' => [
-        'redirectConfirmUrl' => $form['#return_url'],
-        'redirectCancelUrl' => $form['#cancel_url'],
-      ],
-      'merchantReference' => sprintf('%s #%d', $this->getReference(), $order->id()),
-//      'taxAmount' => 0,
-//      'shippingAmount' => 5,
-    ];
+    if (!empty($lineItems)) {
+      $data['items'] = $lineItems;
+    }
 
     return $data;
   }
 
+  /**
+   * Create a PartPay order.
+   */
   public function createOrder(array $transaction) {
 
     $this->init();
