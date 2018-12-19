@@ -12,19 +12,15 @@ Commerce PartPay supports gateway hosted billing methods.
 
 [PartPay](https://partpay.co.nz) is a 
 payment solution hosted by PartPay; your site won't see credit card details so
-you have less requirements for compliance. It's safer and simpler to implement.
+you have fewer requirements for compliance. It's safer and simpler to implement.
 
 
 ## Installation & Configuration
 
 1. Download from [Commerce PartPay project page](http://drupal.org/project/commerce_partpay)
-2. Enable the payment processor(s) you wish to use.
+2. Enable the payment module.
 3. Visit the Commerce Payment Methods page at admin/commerce/config/payment-methods
 4. Enable and edit the payment methods you require.
-
-Pretty much all the details required in the configuration interface are obtained from
-Payment Express. If the inline documentation isn't clear, please file an issue and help
-improve the interface!
 
 ## Troubleshooting
 
