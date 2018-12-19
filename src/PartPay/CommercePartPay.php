@@ -19,7 +19,7 @@ abstract class CommercePartPay extends OffsitePaymentGatewayBase implements Comm
     /* @var \Drupal\commerce_partpay\PartPay\PartPay $partPay */
     $partPay = $this->partPay;
 
-    $response = $partPay->getOrder($request->get('orderId') . 'd');
+    $response = $partPay->getOrder($request->get('orderId'));
 
     if (!$response) {
 
