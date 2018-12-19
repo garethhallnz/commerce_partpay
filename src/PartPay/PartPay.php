@@ -3,7 +3,6 @@
 namespace Drupal\commerce_partpay\PartPay;
 
 use Drupal\commerce_payment\Entity\PaymentInterface;
-use GuzzleHttp\RequestOptions;
 
 /**
  * Class Payment Express Service.
@@ -30,25 +29,6 @@ class PartPay extends AbstractAbstractPartPayRequest {
 
     }
 
-  }
-
-  /**
-   * Create an access token.
-   */
-  public function createToken() {
-
-    $this->setTokenRequestMode();
-
-    $options = [
-      RequestOptions::JSON => [
-        "client_id" => $this->getClientId(),
-        "client_secret" => $this->getSecret(),
-        "audience" => $this->getAudience(),
-        "grant_type" => "client_credentials",
-      ],
-    ];
-
-    return $this->request('POST', '/oauth/token', $options);
   }
 
   /**
@@ -89,13 +69,6 @@ class PartPay extends AbstractAbstractPartPayRequest {
 
     return $result;
 
-  }
-
-  /**
-   * Get PartPay configuration.
-   */
-  public function getConfiguration() {
-    return $this->request('GET', '/configuration');
   }
 
   /**
@@ -174,20 +147,6 @@ class PartPay extends AbstractAbstractPartPayRequest {
     }
 
     return $data;
-  }
-
-  /**
-   * Create a PartPay order.
-   */
-  public function createOrder(array $transaction) {
-
-    $this->init();
-
-    $options = [
-      RequestOptions::JSON => $transaction,
-    ];
-
-    return $this->request('POST', '/order', $options);
   }
 
 }

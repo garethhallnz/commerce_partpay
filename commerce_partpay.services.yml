@@ -6,4 +6,4 @@ services:
 
   commerce_partpay.partpay:
       class: Drupal\commerce_partpay\PartPay\PartPay
-      arguments: ['@commerce_partpay.logger', '@module_handler', "@http_client"]
+      arguments: ['@commerce_partpay.logger', "@http_client"]

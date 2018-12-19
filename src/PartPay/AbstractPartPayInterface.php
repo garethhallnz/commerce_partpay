@@ -103,19 +103,19 @@ interface AbstractPartPayInterface {
   public function getReference();
 
   /**
-   * Get the module handler.
-   */
-  public function getModuleHandler();
-
-  /**
    * Is it in redirection mode?
    */
-  public function isRedirectMethod();
+  public function isRedirectMethod($response);
 
   /**
    * Get redirection url.
    */
-  public function getRedirectUrl();
+  public function getRedirectUrl($response);
+
+  /**
+   * Is payment successful.
+   */
+  public function isSuccessful($response);
 
   /**
    * Http request.

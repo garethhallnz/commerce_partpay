@@ -2,9 +2,9 @@
 
 namespace Drupal\commerce_partpay\PartPay;
 
-use Drupal\Core\Extension\ModuleHandlerInterface;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\RequestOptions;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -27,13 +27,6 @@ class AbstractAbstractPartPayRequest implements AbstractPartPayInterface {
    * @var array
    */
   public $configuration;
-
-  /**
-   * Module handler.
-   *
-   * @var \Drupal\Core\Extension\ModuleHandlerInterface
-   */
-  protected $moduleHandle;
 
   /**
    * Provides HTTP client service.
@@ -84,7 +77,6 @@ class AbstractAbstractPartPayRequest implements AbstractPartPayInterface {
    */
   protected $liveTokenEndpoint = 'https://partpay.au.auth0.com';
 
-
   /**
    * Test Audience URL.
    *
@@ -132,14 +124,11 @@ class AbstractAbstractPartPayRequest implements AbstractPartPayInterface {
    *
    * @param \Psr\Log\LoggerInterface $logger
    *   The logger channel.
-   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
-   *   The module handler.
    * @param \GuzzleHttp\ClientInterface $httpClient
    *   Guzzle http client.
    */
-  public function __construct(LoggerInterface $logger, ModuleHandlerInterface $module_handler, ClientInterface $httpClient) {
+  public function __construct(LoggerInterface $logger, ClientInterface $httpClient) {
     $this->logger = $logger;
-    $this->moduleHandle = $module_handler;
     $this->httpClient = $httpClient;
   }
 
@@ -285,14 +274,7 @@ class AbstractAbstractPartPayRequest implements AbstractPartPayInterface {
   /**
    * {@inheritdoc}
    */
-  public function getModuleHandler() {
-    return $this->moduleHandle;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function isRedirectMethod(\stdClass $response) {
+  public function isRedirectMethod($response) {
 
     if (empty($response->redirectUrl)) {
       return FALSE;
@@ -304,13 +286,60 @@ class AbstractAbstractPartPayRequest implements AbstractPartPayInterface {
   /**
    * {@inheritdoc}
    */
-  public function getRedirectUrl(\stdClass $response) {
+  public function getRedirectUrl($response) {
 
     if (empty($response->redirectUrl)) {
       return '';
     }
 
     return $response->redirectUrl;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function isSuccessful($response) {
+    return $response->orderStatus === 'Approved';
+  }
+
+  /**
+   * Create an access token.
+   */
+  public function createToken() {
+
+    $this->setTokenRequestMode();
+
+    $options = [
+      RequestOptions::JSON => [
+        "client_id" => $this->getClientId(),
+        "client_secret" => $this->getSecret(),
+        "audience" => $this->getAudience(),
+        "grant_type" => "client_credentials",
+      ],
+    ];
+
+    return $this->request('POST', '/oauth/token', $options);
+  }
+
+  /**
+   * Get PartPay configuration.
+   */
+  public function getRemoteConfiguration() {
+    return $this->request('GET', '/configuration');
+  }
+
+  /**
+   * Create a PartPay order.
+   */
+  public function createOrder(array $transaction) {
+    return $this->request('POST', '/order', [RequestOptions::JSON => $transaction]);
+  }
+
+  /**
+   * Get order.
+   */
+  public function getOrder($id) {
+    return $this->request('GET', '/order/' . $id);
   }
 
   /**
@@ -330,7 +359,7 @@ class AbstractAbstractPartPayRequest implements AbstractPartPayInterface {
     $options = array_merge_recursive($headers, $options);
 
     if (!empty($options['query'])) {
-      $options['query'] = http_build_query(['query']);
+      $options['query'] = http_build_query($options['query']);
     }
 
     return $this->handleRequest($method, $resource, $options);

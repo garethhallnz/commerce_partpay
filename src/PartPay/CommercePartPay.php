@@ -4,7 +4,6 @@ namespace Drupal\commerce_partpay\PartPay;
 
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
-use Omnipay\Common\Message\ResponseInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -15,48 +14,24 @@ abstract class CommercePartPay extends OffsitePaymentGatewayBase implements Comm
   /**
    * {@inheritdoc}
    */
-  public function onNotify(Request $request) {
-
-    /** @var \Omnipay\Common\Message\AbstractResponse $response */
-    $response = $this->gateway->completePurchase([])->send();
-
-    if (!$response->isRedirect() && $response->isSuccessful()) {
-      $order = $request->attributes->all()['commerce_order'];
-      $this->capturePayment($order, $response);
-      $order->state = 'completed';
-      $order->save();
-    }
-
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function onCancel(OrderInterface $order, Request $request) {
 
-    /** @var \Omnipay\Common\Message\AbstractResponse $response */
-    $response = $this->gateway->completePurchase([])->send();
+    /* @var \Drupal\commerce_partpay\PartPay\PartPay $partPay */
+    $partPay = $this->partPay;
 
-    if (!$response->isRedirect() && !$response->isSuccessful()) {
-      $this->capturePayment($order, $response);
-    }
+    $response = $partPay->getOrder($request->get('orderId') . 'd');
 
-    $response_data = $response->getData();
+    if (!$response) {
 
-    if (!$response->isSuccessful() && !empty($response_data->ReCo) && $response_data->ReCo[0] != 'RC') {
-
-      $message = ucwords(strtolower($response->getMessage()));
-
-      drupal_set_message(
-        $this->t(
-          'Sorry @gateway failed with "@message". You may resume the checkout process on this page when you are ready.',
-          [
-            '@message' => $message,
-            '@gateway' => $this->getDisplayLabel(),
-          ]
-        ),
-        'error'
+      $message = $this->t(
+        'Sorry @gateway failed with "@message". You may resume the checkout process on this page when you are ready.',
+        [
+          '@message' => ucwords(strtolower($response->getReasonPhrase())),
+          '@gateway' => $this->getDisplayLabel(),
+        ]
       );
+
+      \Drupal::messenger()->addMessage($message, 'error');
     }
     else {
       parent::onCancel($order, $request);
@@ -69,10 +44,12 @@ abstract class CommercePartPay extends OffsitePaymentGatewayBase implements Comm
    */
   public function onReturn(OrderInterface $order, Request $request) {
 
-    /** @var \Omnipay\Common\Message\AbstractResponse $response */
-    $response = $this->gateway->completePurchase([])->send();
+    /* @var \Drupal\commerce_partpay\PartPay\PartPay $partPay */
+    $partPay = $this->partPay;
 
-    if (!$response->isRedirect() && $response->isSuccessful() && $order->state->value !== 'completed') {
+    $response = $partPay->getOrder($request->get('orderId'));
+
+    if ($partPay->isSuccessful($response) && $order->state->value !== 'completed') {
       $this->capturePayment($order, $response);
     }
 
@@ -81,26 +58,22 @@ abstract class CommercePartPay extends OffsitePaymentGatewayBase implements Comm
   /**
    * {@inheritdoc}
    */
-  public function capturePayment(OrderInterface $order, ResponseInterface $response) {
+  public function capturePayment(OrderInterface $order, \stdClass $response) {
 
     $payment_storage = $this->entityTypeManager->getStorage('commerce_payment');
 
+    $requestTime = \Drupal::time()->getRequestTime();
+
     $data = [
-      'state' => ucfirst(strtolower($response->getMessage())),
+      'state' => 'fulfillment',
       'amount' => $order->getTotalPrice(),
       'payment_gateway' => $this->entityId,
       'order_id' => $order->id(),
-      'remote_id' => $response->getTransactionId(),
-      'remote_state' => $response->getMessage(),
-      'authorized' => \Drupal::time()->getRequestTime(),
+      'remote_id' => $response->orderId,
+      'remote_state' => $response->orderStatus,
+      'authorized' => $requestTime,
+      'completed' => $requestTime,
     ];
-
-    /** @var \Drupal\commerce_partpay\PartPay\PartPay $partPayService */
-    $partPayService = $this->PartPayService;
-
-    $module_handler = $partPayService->getModuleHandler();
-
-    $module_handler->alter('commerce_partpay_capture_payment', $data, $order, $response);
 
     $payment = $payment_storage->create($data);
 

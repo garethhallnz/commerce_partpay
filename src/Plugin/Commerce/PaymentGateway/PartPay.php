@@ -152,6 +152,16 @@ class PartPay extends CommercePartPay {
 
     $form_state->setValue('accessToken', $response->access_token);
     $form_state->setValue('accessTokenExpiresIn', $response->expires_in);
+
+    $this->partPay->setTokenRequestMode(FALSE);
+    $limits = $this->partPay->getRemoteConfiguration();
+
+    $message = $this->t(
+      'Your account with PartPay is configured with payment ranges between @min and @max.',
+      ['@min' => $limits->minimumAmount, '@max' => $limits->maximumAmount]
+    );
+
+    \Drupal::messenger()->addMessage($message, 'warning');
   }
 
   /**
