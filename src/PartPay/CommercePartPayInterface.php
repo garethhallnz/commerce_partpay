@@ -3,11 +3,12 @@
 namespace Drupal\commerce_partpay\PartPay;
 
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
 
 /**
  * Dps Interface.
  */
-interface CommercePartPayInterface {
+interface CommercePartPayInterface extends SupportsRefundsInterface {
 
   /**
    * Capture the payment.

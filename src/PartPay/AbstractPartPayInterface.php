@@ -3,7 +3,7 @@
 namespace Drupal\commerce_partpay\PartPay;
 
 /**
- * Provides a handler for IPN requests from PayPal.
+ * Provides a handler for IPN requests from PartPay.
  */
 interface AbstractPartPayInterface {
 

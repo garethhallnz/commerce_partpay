@@ -343,6 +343,20 @@ class AbstractAbstractPartPayRequest implements AbstractPartPayInterface {
   }
 
   /**
+   * Refund all or part of a payment.
+   */
+  public function refundOrder($id, $body) {
+    $options = [
+      'headers' => [
+        'Accept' => 'application/json',
+        'Content-Type' => 'application/json',
+      ],
+      'body' => json_encode($body),
+    ];
+    return $this->request('POST', '/order/' . $id . '/refund', $options);
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function request($method, $resource, array $options = []) {
