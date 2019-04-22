@@ -2,8 +2,10 @@
 
 namespace Drupal\commerce_partpay\PartPay;
 
+use Drupal\commerce_payment\Entity\PaymentInterface;
+
 /**
- * Class P Service.
+ * Class Payment Express Service.
  *
  * @package Drupal\commerce_partpay
  */
